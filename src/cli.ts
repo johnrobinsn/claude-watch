@@ -111,9 +111,9 @@ program
       process.exit(1);
     }
 
-    // Add tmux keybinding dynamically (prefix + W to switch to watch session pane)
+    // Add tmux keybinding dynamically (prefix + W to switch to watch session pane 0.0)
     try {
-      execSync(`tmux bind-key W switch-client -t ${WATCH_SESSION}:0.0`, { stdio: "ignore" });
+      execSync(`tmux bind-key W run-shell 'tmux switch-client -t ${WATCH_SESSION} && tmux select-window -t ${WATCH_SESSION}:0 && tmux select-pane -t ${WATCH_SESSION}:0.0'`, { stdio: "ignore" });
     } catch {
       // Ignore errors - binding might already exist
     }
