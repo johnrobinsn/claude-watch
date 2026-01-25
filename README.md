@@ -4,7 +4,8 @@ A terminal UI dashboard for monitoring multiple Claude Code sessions running in 
 
 **Requires tmux.** claude-watch is designed to run inside tmux and leverages tmux for session management, navigation, and state detection.
 
-![claude-watch dashboard](https://placeholder-for-screenshot.png)
+<!--[claude-watch dashboard](https://placeholder-for-screenshot.png)-->
+https://github.com/user-attachments/assets/74d77eee-191e-4224-aa87-9985efd1ace7
 
 ## Features
 
