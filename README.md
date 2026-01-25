@@ -30,7 +30,7 @@ npm install -g claude-watch
 ### From source
 
 ```bash
-git clone https://github.com/youruser/claude-watch.git
+git clone https://github.com/johnrobinsn/claude-watch.git
 cd claude-watch
 npm install
 npm run build
@@ -159,7 +159,7 @@ CREATE TABLE sessions (
 
 ```bash
 # Clone the repository
-git clone https://github.com/youruser/claude-watch.git
+git clone https://github.com/johnrobinsn/claude-watch.git
 cd claude-watch
 
 # Install dependencies
@@ -218,7 +218,6 @@ claude-watch/
 │   │   └── claude-watch-hook.ts
 │   ├── setup/              # Setup wizard
 │   │   ├── hooks.ts
-│   │   ├── tmux.ts
 │   │   └── wizard.ts
 │   ├── tmux/               # tmux integration
 │   │   ├── detect.ts
@@ -232,15 +231,13 @@ claude-watch/
 
 ## Uninstall
 
-Remove hooks and configuration:
+Remove hooks:
 
 ```bash
 claude-watch --uninstall
 ```
 
-This will:
-1. Remove claude-watch hooks from `~/.claude/settings.json`
-2. Optionally remove the tmux keybinding from `~/.tmux.conf`
+This will remove claude-watch hooks from `~/.claude/settings.json`.
 
 To fully remove:
 
@@ -262,9 +259,9 @@ rm -rf ~/.claude-watch
 
 ### Status not updating
 
-1. Verify the hook is executable: `node ~/.claude-watch/hooks/claude-watch-hook.js`
-2. Check debug log: `tail -f ~/.claude-watch/debug.log`
-3. Ensure SQLite database exists: `ls ~/.claude-watch/state.db`
+1. Check that hooks are installed: `cat ~/.claude/settings.json | grep claude-watch`
+2. Ensure SQLite database exists: `ls ~/.claude-watch/state.db`
+3. Restart Claude Code sessions to pick up new hooks
 
 ### "No sessions" when Claude is running
 
@@ -272,9 +269,10 @@ The Claude session may have started before hooks were installed. Restart Claude 
 
 ### tmux binding not working
 
-1. Reload tmux config: `tmux source ~/.tmux.conf`
-2. Ensure you have a session named "watch": `tmux new-session -s watch`
-3. Check binding exists: `tmux list-keys | grep claude`
+The `prefix + W` binding is added dynamically when claude-watch starts. If it's not working:
+
+1. Ensure claude-watch has been started at least once in this tmux server
+2. Check binding exists: `tmux list-keys | grep "switch-client -t watch"`
 
 ## Requirements
 
