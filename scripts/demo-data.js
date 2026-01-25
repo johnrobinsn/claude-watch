@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
-import { copyFileSync, existsSync, unlinkSync } from "fs";
+import { existsSync, unlinkSync } from "fs";
 import Database from "better-sqlite3";
 import { join } from "path";
 import { homedir } from "os";
 
-const DB_PATH = join(homedir(), ".claude-watch", "state.db");
-const BACKUP_PATH = join(homedir(), ".claude-watch", "state.db.backup");
+const DEMO_DB_PATH = join(homedir(), ".claude-watch", "demo.db");
 
 const DEMO_SESSIONS = [
   // Busy sessions (green)
@@ -77,24 +76,33 @@ const DEMO_SESSIONS = [
   },
 ];
 
-function seed() {
-  if (!existsSync(DB_PATH)) {
-    console.error("Database not found at", DB_PATH);
-    console.error("Run 'claude-watch --setup' first.");
-    process.exit(1);
+function create() {
+  // Remove existing demo database if it exists
+  if (existsSync(DEMO_DB_PATH)) {
+    unlinkSync(DEMO_DB_PATH);
   }
 
-  // Backup current state
-  console.log("Backing up current database...");
-  copyFileSync(DB_PATH, BACKUP_PATH);
-  console.log("  Saved to:", BACKUP_PATH);
+  console.log("Creating demo database...");
+  const db = new Database(DEMO_DB_PATH);
+
+  // Create schema
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      pid INTEGER NOT NULL,
+      cwd TEXT NOT NULL,
+      tmux_target TEXT,
+      state TEXT NOT NULL DEFAULT 'idle',
+      current_action TEXT,
+      prompt_text TEXT,
+      last_update INTEGER NOT NULL,
+      metadata TEXT
+    )
+  `);
 
   // Insert demo data
-  console.log("Inserting demo sessions...");
-  const db = new Database(DB_PATH);
-
   const insert = db.prepare(`
-    INSERT OR REPLACE INTO sessions (id, pid, cwd, tmux_target, state, current_action, prompt_text, last_update, metadata)
+    INSERT INTO sessions (id, pid, cwd, tmux_target, state, current_action, prompt_text, last_update, metadata)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
   `);
 
@@ -110,63 +118,46 @@ function seed() {
       session.prompt_text,
       now
     );
-    console.log(`  + ${session.id}: ${session.state} - ${session.cwd}`);
+    console.log(`  + ${session.state.padEnd(10)} ${session.cwd}`);
   }
 
   db.close();
-  console.log("\nDone! Run 'claude-watch' to see the demo data.");
-  console.log("Run 'node scripts/demo-data.js restore' to restore original state.");
+
+  console.log("");
+  console.log("Demo database created at:", DEMO_DB_PATH);
+  console.log("");
+  console.log("To view the demo, run:");
+  console.log(`  claude-watch --demo-db "${DEMO_DB_PATH}"`);
+  console.log("");
+  console.log("To clean up:");
+  console.log("  node scripts/demo-data.js clean");
 }
 
-function restore() {
-  if (!existsSync(BACKUP_PATH)) {
-    console.error("No backup found at", BACKUP_PATH);
-    console.error("Nothing to restore.");
-    process.exit(1);
+function clean() {
+  if (!existsSync(DEMO_DB_PATH)) {
+    console.log("No demo database found.");
+    return;
   }
 
-  console.log("Restoring database from backup...");
-  copyFileSync(BACKUP_PATH, DB_PATH);
-  unlinkSync(BACKUP_PATH);
-  console.log("Done! Original state restored.");
-}
-
-function clearDemo() {
-  if (!existsSync(DB_PATH)) {
-    console.error("Database not found at", DB_PATH);
-    process.exit(1);
-  }
-
-  console.log("Removing demo sessions...");
-  const db = new Database(DB_PATH);
-
-  const deleteStmt = db.prepare("DELETE FROM sessions WHERE id LIKE 'demo-%'");
-  const result = deleteStmt.run();
-  console.log(`  Removed ${result.changes} demo sessions.`);
-
-  db.close();
-  console.log("Done!");
+  unlinkSync(DEMO_DB_PATH);
+  console.log("Demo database removed:", DEMO_DB_PATH);
 }
 
 // CLI
 const command = process.argv[2];
 
 switch (command) {
-  case "seed":
-    seed();
+  case "create":
+    create();
     break;
-  case "restore":
-    restore();
-    break;
-  case "clear":
-    clearDemo();
+  case "clean":
+    clean();
     break;
   default:
     console.log("Usage: node scripts/demo-data.js <command>");
     console.log("");
     console.log("Commands:");
-    console.log("  seed     Back up current DB and insert demo sessions");
-    console.log("  restore  Restore DB from backup");
-    console.log("  clear    Remove demo sessions without restoring backup");
+    console.log("  create   Create a demo database with sample sessions");
+    console.log("  clean    Remove the demo database");
     process.exit(1);
 }

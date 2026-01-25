@@ -23,6 +23,7 @@ const WATCH_SESSION = "watch";
 program
   .option("--setup", "Run interactive setup wizard")
   .option("--uninstall", "Remove claude-watch hooks and configuration")
+  .option("--demo-db <path>", "Use a demo database (disables tmux polling)")
   .action(async (options) => {
     if (options.setup) {
       await runSetup();
@@ -122,7 +123,7 @@ program
     process.stdout.write("\x1b[?1049h");
     process.stdout.write("\x1b[H"); // Move cursor to top-left
 
-    const { waitUntilExit } = render(React.createElement(App));
+    const { waitUntilExit } = render(React.createElement(App, { demoDb: options.demoDb }));
 
     try {
       await waitUntilExit();
