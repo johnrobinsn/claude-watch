@@ -1,0 +1,53 @@
+{
+  "name": "claude-watch",
+  "version": "0.1.0",
+  "description": "TUI dashboard for monitoring Claude Code sessions with tmux integration",
+  "type": "module",
+  "main": "dist/cli.js",
+  "bin": {
+    "claude-watch": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src tests --ext .ts,.tsx",
+    "format": "prettier --write 'src/**/*.{ts,tsx}' 'tests/**/*.{ts,tsx}'",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "tui",
+    "tmux",
+    "monitoring",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "commander": "^12.1.0",
+    "ink": "^5.1.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitest/coverage-istanbul": "^2.1.8",
+    "eslint": "^8.57.0",
+    "ink-testing-library": "^4.0.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
