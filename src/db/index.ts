@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { mkdirSync, existsSync } from "fs";
 import { dirname } from "path";
 import { DATABASE_PATH } from "../utils/paths.js";
-import { initializeSchema } from "./schema.js";
+import { initializeSchema, getMetadata, setMetadata } from "./schema.js";
 import { isPidAlive } from "../utils/pid.js";
 import { getSessionPids, deleteSessionsByPids } from "./sessions.js";
 
