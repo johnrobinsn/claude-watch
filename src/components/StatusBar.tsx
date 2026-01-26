@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { VERSION } from "../utils/version.js";
 
 interface StatusBarProps {
   inTmux: boolean;
@@ -7,7 +8,7 @@ interface StatusBarProps {
 
 export function StatusBar({ inTmux }: StatusBarProps) {
   return (
-    <Box borderStyle="single" borderTop={false} paddingX={1}>
+    <Box borderStyle="single" borderTop={false} paddingX={1} justifyContent="space-between">
       <Text>
         <Text color="cyan">[Enter]</Text>
         <Text dimColor> Jump to session </Text>
@@ -19,6 +20,7 @@ export function StatusBar({ inTmux }: StatusBarProps) {
           <Text color="yellow"> (not in tmux - navigation disabled)</Text>
         )}
       </Text>
+      <Text dimColor>v{VERSION}</Text>
     </Box>
   );
 }
