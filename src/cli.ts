@@ -205,7 +205,7 @@ program
 
     // Add tmux keybinding dynamically (prefix + W to switch to watch session pane)
     try {
-      execSync(`tmux bind-key W switch-client -t "${WATCH_SESSION}:1.1"`, { stdio: "ignore" });
+      execSync(`tmux bind-key W switch-client -t "${tmuxTarget}"`, { stdio: "ignore" });
     } catch {
       // Ignore errors - binding might already exist
     }
