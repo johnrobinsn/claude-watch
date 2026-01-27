@@ -4,12 +4,14 @@ import { program } from "commander";
 import { render } from "ink";
 import React from "react";
 import { execSync } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, writeFileSync, unlinkSync, readFileSync } from "fs";
 import { createInterface } from "readline";
 import { App } from "./app.js";
 import { runSetup, runCleanup } from "./setup/index.js";
 import { isInTmux, getTmuxSessionName } from "./tmux/detect.js";
+import { join } from "path";
 import { CLAUDE_WATCH_DIR } from "./utils/paths.js";
+import { isPidAlive } from "./utils/pid.js";
 import { VERSION } from "./utils/version.js";
 import {
   checkHooksStatus,
@@ -60,9 +62,7 @@ program
     if (!isInTmux()) {
       console.error("claude-watch requires tmux to run.");
       console.error("");
-      console.error("Start tmux first, then run claude-watch:");
-      console.error("  tmux new-session -s watch");
-      console.error("  claude-watch");
+      console.error("Start tmux first, then run claude-watch from inside tmux.");
       process.exit(1);
     }
 
@@ -162,6 +162,40 @@ program
       }
     }
 
+    // Check if another instance is already running
+    const lockFile = join(CLAUDE_WATCH_DIR, "claude-watch.lock");
+    if (existsSync(lockFile)) {
+      try {
+        const lock = JSON.parse(readFileSync(lockFile, "utf-8"));
+        if (lock.pid && isPidAlive(lock.pid)) {
+          console.log("claude-watch is already running.");
+          if (lock.tmux_target) {
+            try {
+              execSync(`tmux switch-client -t "${lock.tmux_target}"`, { stdio: "inherit" });
+            } catch {
+              // Ignore - may already be in the right pane
+            }
+          }
+          process.exit(0);
+        }
+      } catch {
+        // Stale or corrupt lock file, proceed
+      }
+    }
+
+    // Write lock file
+    const tmuxTarget = `${WATCH_SESSION}:${(() => {
+      try {
+        return execSync('tmux display-message -p "#{window_index}.#{pane_index}"', {
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        }).trim();
+      } catch {
+        return "1.1";
+      }
+    })()}`;
+    writeFileSync(lockFile, JSON.stringify({ pid: process.pid, tmux_target: tmuxTarget }));
+
     // Rename current window to "watch"
     try {
       execSync(`tmux rename-window watch`, { stdio: "ignore" });
@@ -187,6 +221,7 @@ program
     } finally {
       // Exit alternate screen buffer, restore previous content
       process.stdout.write("\x1b[?1049l");
+      try { unlinkSync(lockFile); } catch { /* ignore */ }
     }
   });
 
