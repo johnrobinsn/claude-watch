@@ -111,7 +111,7 @@ program
           execSync(`tmux switch-client -t ${WATCH_SESSION}`, { stdio: "inherit" });
         } else {
           // Session doesn't exist, create it with claude-watch running
-          execSync(`tmux new-session -d -s ${WATCH_SESSION} ${escapeArg(fullCmd)}`, { stdio: "inherit" });
+          execSync(`tmux new-session -d -s ${WATCH_SESSION} ${escapeArg(fullCmd)}`, { stdio: "ignore" });
           execSync(`tmux switch-client -t ${WATCH_SESSION}`, { stdio: "inherit" });
         }
       } catch (error) {
