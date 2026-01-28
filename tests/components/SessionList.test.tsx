@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
 import { SessionList } from "../../src/components/SessionList.js";
-import type { Session } from "../../src/db/sessions.js";
+import type { Session } from "../../src/db/index.js";
 
 const mockSessions: Session[] = [
   {

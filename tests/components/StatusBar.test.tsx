@@ -10,7 +10,7 @@ describe("StatusBar", () => {
     const output = lastFrame();
     expect(output).toContain("[h]");
     expect(output).toContain("Help");
-    expect(output).toContain("[prefix+w]");
+    expect(output).toContain("[prefix+W]");
     expect(output).toContain("[q]");
     expect(output).toContain("Quit");
   });

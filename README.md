@@ -43,7 +43,7 @@ npm link  # Makes 'claude-watch' available globally
 Run the interactive setup wizard:
 
 ```bash
-claude-watch --setup
+claude-watch setup
 ```
 
 This will:
@@ -55,6 +55,25 @@ This will:
 The tmux keybinding (`prefix + W`) is added automatically when claude-watch starts.
 
 ## Usage
+
+### Available commands
+
+| Command | Description |
+|---------|-------------|
+| `claude-watch` | Start TUI dashboard (default, requires tmux) |
+| `claude-watch serve` | Start HTTP server only (no tmux required) |
+| `claude-watch setup` | Run interactive setup wizard |
+| `claude-watch uninstall` | Remove hooks and configuration |
+
+### Options
+
+```bash
+# TUI with HTTP server
+claude-watch --serve --port 8080
+
+# HTTP server only
+claude-watch serve --port 8080 --host 0.0.0.0
+```
 
 ### Starting the dashboard
 
@@ -206,6 +225,11 @@ claude-watch/
 ├── src/
 │   ├── cli.ts              # CLI entry point
 │   ├── app.tsx             # Main React/Ink app
+│   ├── commands/           # CLI subcommands
+│   │   ├── serve.ts        # HTTP server command
+│   │   ├── setup.ts        # Setup wizard command
+│   │   ├── uninstall.ts    # Uninstall command
+│   │   └── tui.ts          # TUI command (default)
 │   ├── components/         # UI components
 │   │   ├── Header.tsx
 │   │   ├── SessionEntry.tsx
@@ -236,7 +260,7 @@ claude-watch/
 
 ```bash
 npm update -g @johnrobinsn/claude-watch
-claude-watch --setup  # Reinstall hooks with updated paths
+claude-watch setup  # Reinstall hooks with updated paths
 ```
 
 ### From source
@@ -246,7 +270,7 @@ cd claude-watch
 git pull
 npm install
 npm run build
-claude-watch --setup  # Reinstall hooks with updated paths
+claude-watch setup  # Reinstall hooks with updated paths
 ```
 
 ## Uninstall
@@ -254,7 +278,7 @@ claude-watch --setup  # Reinstall hooks with updated paths
 Remove hooks from Claude Code settings:
 
 ```bash
-claude-watch --cleanup
+claude-watch uninstall
 ```
 
 This will remove claude-watch hooks from `~/.claude/settings.json`.
@@ -276,7 +300,7 @@ rm -rf ~/.claude-watch
 
 ### Sessions not appearing
 
-1. Ensure you ran `claude-watch --setup` to install hooks
+1. Ensure you ran `claude-watch setup` to install hooks
 2. Restart any running Claude Code sessions (hooks are loaded at startup)
 3. Check that `~/.claude/settings.json` contains the claude-watch hooks
 

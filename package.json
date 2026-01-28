@@ -17,7 +17,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "dev:serve": "npm run build && node --watch dist/cli.js serve",
     "start": "node dist/cli.js",
+    "start:serve": "node dist/cli.js serve",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -42,10 +44,13 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
+    "hono": "^4.6.0",
     "ink": "^5.1.0",
     "react": "^18.3.1"
   },
   "devDependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@types/bun": "^1.1.0",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@typescript-eslint/eslint-plugin": "^8.18.0",

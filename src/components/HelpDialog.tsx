@@ -10,7 +10,7 @@ const KEYS = [
   { key: "↑↓ / j k", desc: "Select session" },
   { key: "h", desc: "Toggle help" },
   { key: "q", desc: "Quit" },
-  { key: "prefix+w", desc: "Return here" },
+  { key: "prefix+W", desc: "Return here" },
 ];
 
 export function HelpDialog({ width }: HelpDialogProps) {

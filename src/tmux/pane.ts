@@ -2,6 +2,24 @@ import { execSync } from "child_process";
 import { isInTmux } from "./detect.js";
 
 /**
+ * Get the title of a tmux pane.
+ * @param target - The tmux target in format "session:window.pane"
+ * @returns The pane title, or null if failed
+ */
+export function getPaneTitle(target: string): string | null {
+  try {
+    const result = execSync(`tmux display-message -p -t "${target}" "#{pane_title}"`, {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 1000,
+    });
+    return result.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Capture the contents of a tmux pane.
  * @param target - The tmux target in format "session:window.pane"
  * @returns The pane contents as a string, or null if capture failed
@@ -119,5 +137,23 @@ export function detectRecentInterruption(content: string): 'interrupted' | 'decl
   if (slice.includes('Interrupted')) return 'interrupted';
   if (slice.includes('User declined to answer')) return 'declined';
 
+  return null;
+}
+
+/**
+ * Check if a tmux pane shows a recent interruption/cancellation.
+ * Returns the session update to apply, or null if no update needed.
+ *
+ * @param tmuxTarget - The tmux target in format "session:window.pane"
+ * @returns Session fields to update if interruption detected, null otherwise
+ */
+export function checkForInterruption(tmuxTarget: string): { state: 'idle'; current_action: null; prompt_text: null } | null {
+  const content = capturePaneContent(tmuxTarget);
+  if (!content) return null;
+
+  const interruption = detectRecentInterruption(content);
+  if (interruption) {
+    return { state: 'idle', current_action: null, prompt_text: null };
+  }
   return null;
 }

@@ -22,6 +22,7 @@ import {
   writeFileSync,
   renameSync,
   unlinkSync,
+  readdirSync,
 } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -98,6 +99,27 @@ function deleteSessionFile(id: string): void {
     }
   } catch {
     // Ignore
+  }
+}
+
+// Delete any existing sessions with the same tmux_target (cleanup stale sessions)
+function deleteSessionsByTmuxTarget(tmuxTarget: string, excludeId?: string): void {
+  try {
+    if (!existsSync(SESSIONS_DIR)) return;
+
+    const files = readdirSync(SESSIONS_DIR).filter(f => f.endsWith(".json"));
+    for (const file of files) {
+      const id = file.replace(".json", "");
+      if (id === excludeId) continue;
+
+      const session = readSession(id);
+      if (session && session.tmux_target === tmuxTarget) {
+        debugLog(`deleteSessionsByTmuxTarget: removing stale session ${id} with target ${tmuxTarget}`);
+        deleteSessionFile(id);
+      }
+    }
+  } catch {
+    // Ignore errors during cleanup
   }
 }
 
@@ -216,12 +238,19 @@ async function readStdin(): Promise<HookInput> {
 }
 
 function handleSessionStart(input: HookInput): void {
+  const tmuxTarget = getTmuxTarget();
+
+  // Clean up any stale sessions with the same tmux_target before creating new one
+  if (tmuxTarget) {
+    deleteSessionsByTmuxTarget(tmuxTarget, input.session_id);
+  }
+
   const session: Session = {
     v: SCHEMA_VERSION,
     id: input.session_id,
     pid: getClaudePid(),
     cwd: input.cwd,
-    tmux_target: getTmuxTarget(),
+    tmux_target: tmuxTarget,
     state: "idle",
     current_action: null,
     prompt_text: null,

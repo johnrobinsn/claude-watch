@@ -14,7 +14,7 @@ export function StatusBar({ inTmux }: StatusBarProps) {
         <Text dimColor> Help </Text>
         <Text color="cyan">[q]</Text>
         <Text dimColor> Quit </Text>
-        <Text color="cyan">[prefix+w]</Text>
+        <Text color="cyan">[prefix+W]</Text>
         <Text dimColor> Return here</Text>
         {!inTmux && (
           <Text color="yellow"> (not in tmux - navigation disabled)</Text>

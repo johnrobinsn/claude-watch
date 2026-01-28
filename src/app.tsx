@@ -10,11 +10,11 @@ import {
 } from "./db/index.js";
 import { isInTmux, getAllTmuxSessions, getTmuxSessionName, type TmuxSession } from "./tmux/detect.js";
 import { switchToTarget } from "./tmux/navigate.js";
-import { capturePaneContent, detectRecentInterruption } from "./tmux/pane.js";
+import { checkForInterruption } from "./tmux/pane.js";
 
 const POLL_INTERVAL = 500; // ms
 const CLEANUP_INTERVAL = 5000; // ms
-const PANE_CHECK_INTERVAL = 2000; // ms - check tmux panes for prompt
+const PANE_CHECK_INTERVAL = 500; // ms - check tmux panes for prompt
 
 export function App() {
   const { exit } = useApp();
@@ -97,18 +97,9 @@ export function App() {
         for (const session of allSessions) {
           if (!session.tmux_target) continue;
 
-          const content = capturePaneContent(session.tmux_target);
-          if (!content) continue;
-
-          // Only detect explicit interruption/decline signals
-          const interruption = detectRecentInterruption(content);
-
-          if (interruption && session.state !== "idle") {
-            updateSession(session.id, {
-              state: "idle",
-              current_action: null,
-              prompt_text: null,
-            });
+          const update = checkForInterruption(session.tmux_target);
+          if (update && session.state !== "idle") {
+            updateSession(session.id, update);
           }
         }
       } catch {
