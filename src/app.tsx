@@ -10,7 +10,7 @@ import {
 } from "./db/index.js";
 import { isInTmux, getAllTmuxSessions, getTmuxSessionName, type TmuxSession } from "./tmux/detect.js";
 import { switchToTarget } from "./tmux/navigate.js";
-import { capturePaneContent, detectRecentInterruption } from "./tmux/pane.js";
+import { capturePaneContent, detectRecentInterruption, findPaneForPid } from "./tmux/pane.js";
 
 const POLL_INTERVAL = 500; // ms
 const CLEANUP_INTERVAL = 5000; // ms
@@ -25,6 +25,7 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [inTmux] = useState(() => isInTmux());
   const [currentTmuxSession] = useState(() => getTmuxSessionName());
+  const [refreshIndex, setRefreshIndex] = useState(0);
 
   // Get terminal dimensions
   const terminalHeight = stdout?.rows || 24;
@@ -120,6 +121,35 @@ export function App() {
     return () => clearInterval(interval);
   }, [inTmux]);
 
+  // Round-robin refresh of tmux_target using PID lookup
+  // Verifies one session per cycle to keep targets accurate when panes move
+  useEffect(() => {
+    if (!inTmux) return;
+
+    const refreshTarget = () => {
+      try {
+        const allSessions = getAllSessions().filter((s) => s.pid && s.tmux_target);
+        if (allSessions.length === 0) return;
+
+        // Pick one session to refresh this cycle
+        const idx = refreshIndex % allSessions.length;
+        const session = allSessions[idx];
+        setRefreshIndex((i) => i + 1);
+
+        // Find correct pane for this session's PID
+        const correctTarget = findPaneForPid(session.pid);
+        if (correctTarget && correctTarget !== session.tmux_target) {
+          updateSession(session.id, { tmux_target: correctTarget });
+        }
+      } catch {
+        // Ignore errors during target refresh
+      }
+    };
+
+    const interval = setInterval(refreshTarget, PANE_CHECK_INTERVAL);
+    return () => clearInterval(interval);
+  }, [inTmux, refreshIndex]);
+
   // Get total item count for navigation
   const totalCount = getTotalItemCount(sessions, tmuxSessions);
 
@@ -155,11 +185,11 @@ export function App() {
 
     if (totalCount === 0) return;
 
-    // Navigation
+    // Navigation (wraps around)
     if (key.upArrow || input === "k") {
-      setSelectedIndex((prev) => Math.max(0, prev - 1));
+      setSelectedIndex((prev) => (prev <= 0 ? totalCount - 1 : prev - 1));
     } else if (key.downArrow || input === "j") {
-      setSelectedIndex((prev) => Math.min(totalCount - 1, prev + 1));
+      setSelectedIndex((prev) => (prev >= totalCount - 1 ? 0 : prev + 1));
     }
 
     // Jump to session

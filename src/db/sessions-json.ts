@@ -56,6 +56,7 @@ export interface SessionUpdate {
   state?: SessionState;
   current_action?: string | null;
   prompt_text?: string | null;
+  tmux_target?: string | null;
 }
 
 /**
@@ -135,6 +136,9 @@ export function updateSession(id: string, update: SessionUpdate): void {
   }
   if (update.prompt_text !== undefined) {
     session.prompt_text = update.prompt_text;
+  }
+  if (update.tmux_target !== undefined) {
+    session.tmux_target = update.tmux_target;
   }
   session.last_update = Date.now();
 

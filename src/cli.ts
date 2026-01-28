@@ -255,6 +255,26 @@ program
     } finally {
       // Exit alternate screen buffer, restore previous content
       process.stdout.write("\x1b[?1049l");
+
+      // Switch to another session before watch session dies
+      // (otherwise tmux detaches when the session's command exits)
+      try {
+        const sessions = execSync('tmux list-sessions -F "#{session_name}"', {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        }).trim().split('\n');
+        const otherSession = sessions.find(s => s !== WATCH_SESSION);
+        if (otherSession) {
+          execSync(`tmux switch-client -t "${otherSession}"`, { stdio: 'ignore' });
+        } else {
+          // No other sessions, create one
+          execSync('tmux new-session -d -s main', { stdio: 'ignore' });
+          execSync('tmux switch-client -t main', { stdio: 'ignore' });
+        }
+      } catch {
+        // Ignore errors - best effort
+      }
+
       try { unlinkSync(lockFile); } catch { /* ignore */ }
     }
   });

@@ -2,6 +2,70 @@ import { execSync } from "child_process";
 import { isInTmux } from "./detect.js";
 
 /**
+ * Find the tmux pane target for a given PID by checking process ancestry.
+ * @param targetPid - The PID to find
+ * @returns The pane target (e.g., "0:3.1") or null if not found
+ */
+export function findPaneForPid(targetPid: number): string | null {
+  if (!isInTmux()) {
+    return null;
+  }
+
+  try {
+    // Get all panes with their PIDs
+    const panesOutput = execSync(
+      'tmux list-panes -a -F "#{session_name}:#{window_index}.#{pane_index} #{pane_pid}"',
+      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"], timeout: 1000 }
+    );
+
+    // Get full process tree
+    const psOutput = execSync("ps -eo pid,ppid", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 1000,
+    });
+
+    // Build parent map: pid -> ppid
+    const parentMap = new Map<number, number>();
+    for (const line of psOutput.split("\n").slice(1)) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const pid = parseInt(parts[0], 10);
+        const ppid = parseInt(parts[1], 10);
+        if (!isNaN(pid) && !isNaN(ppid)) {
+          parentMap.set(pid, ppid);
+        }
+      }
+    }
+
+    // Get all ancestors of targetPid
+    const ancestors = new Set<number>();
+    let current = targetPid;
+    while (current > 1 && parentMap.has(current)) {
+      ancestors.add(current);
+      current = parentMap.get(current)!;
+    }
+    ancestors.add(current); // Include the last one
+
+    // Find which pane's pid is an ancestor of targetPid
+    for (const line of panesOutput.split("\n")) {
+      const match = line.match(/^(\S+)\s+(\d+)$/);
+      if (match) {
+        const paneTarget = match[1];
+        const panePid = parseInt(match[2], 10);
+        if (ancestors.has(panePid)) {
+          return paneTarget;
+        }
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Capture the contents of a tmux pane.
  * @param target - The tmux target in format "session:window.pane"
  * @returns The pane contents as a string, or null if capture failed
@@ -103,8 +167,7 @@ export function detectRecentInterruption(content: string): 'interrupted' | 'decl
 
   // Scan backwards from TOP separator to find the interaction start (● or ❯)
   let interactionStartIdx = -1;
-  const maxScan = Math.max(0, topSepIdx - 15);
-  for (let i = topSepIdx - 1; i >= maxScan; i--) {
+  for (let i = topSepIdx - 1; i >= 0; i--) {
     const line = lines[i];
     if (line.startsWith('●') || line.startsWith('❯')) {
       interactionStartIdx = i;
