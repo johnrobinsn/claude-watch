@@ -1,20 +1,25 @@
 import { execSync } from "child_process";
 import { isInTmux } from "./detect.js";
 
+export interface PaneInfo {
+  target: string;
+  windowName: string | null;
+}
+
 /**
  * Find the tmux pane target for a given PID by checking process ancestry.
  * @param targetPid - The PID to find
- * @returns The pane target (e.g., "0:3.1") or null if not found
+ * @returns The pane info (target and window name) or null if not found
  */
-export function findPaneForPid(targetPid: number): string | null {
+export function findPaneForPid(targetPid: number): PaneInfo | null {
   if (!isInTmux()) {
     return null;
   }
 
   try {
-    // Get all panes with their PIDs
+    // Get all panes with their PIDs and window names
     const panesOutput = execSync(
-      'tmux list-panes -a -F "#{session_name}:#{window_index}.#{pane_index} #{pane_pid}"',
+      'tmux list-panes -a -F "#{session_name}:#{window_index}.#{pane_index} #{window_name} #{pane_pid}"',
       { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"], timeout: 1000 }
     );
 
@@ -48,13 +53,15 @@ export function findPaneForPid(targetPid: number): string | null {
     ancestors.add(current); // Include the last one
 
     // Find which pane's pid is an ancestor of targetPid
+    // Format: "session:window.pane window_name pid"
     for (const line of panesOutput.split("\n")) {
-      const match = line.match(/^(\S+)\s+(\d+)$/);
+      const match = line.match(/^(\S+)\s+(.+?)\s+(\d+)$/);
       if (match) {
         const paneTarget = match[1];
-        const panePid = parseInt(match[2], 10);
+        const windowName = match[2];
+        const panePid = parseInt(match[3], 10);
         if (ancestors.has(panePid)) {
-          return paneTarget;
+          return { target: paneTarget, windowName: windowName || null };
         }
       }
     }

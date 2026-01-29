@@ -45,6 +45,7 @@ interface Session {
   pid: number;
   cwd: string;
   tmux_target: string | null;
+  window_name: string | null;
   state: string;
   current_action: string | null;
   prompt_text: string | null;
@@ -112,6 +113,22 @@ function getTmuxTarget(): string | null {
       { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
     );
     return result.trim();
+  } catch {
+    return null;
+  }
+}
+
+function getWindowName(): string | null {
+  if (!process.env.TMUX) {
+    return null;
+  }
+
+  try {
+    const result = execSync(
+      'tmux display-message -p "#{window_name}"',
+      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
+    );
+    return result.trim() || null;
   } catch {
     return null;
   }
@@ -222,6 +239,7 @@ function handleSessionStart(input: HookInput): void {
     pid: getClaudePid(),
     cwd: input.cwd,
     tmux_target: getTmuxTarget(),
+    window_name: getWindowName(),
     state: "idle",
     current_action: null,
     prompt_text: null,
@@ -235,6 +253,7 @@ function handleUserPromptSubmit(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "busy";
   session.current_action = "Thinking...";
   session.last_update = Date.now();
@@ -246,6 +265,7 @@ function handleStop(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "idle";
   session.current_action = null;
   session.last_update = Date.now();
@@ -257,6 +277,7 @@ function handlePermissionRequest(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "waiting";
   session.current_action = "Waiting...";
   session.last_update = Date.now();
@@ -268,6 +289,7 @@ function handleNotificationIdle(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "idle";
   session.current_action = null;
   session.last_update = Date.now();
@@ -279,6 +301,7 @@ function handleNotificationPermission(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "permission";
   session.current_action = "Waiting for permission";
   session.last_update = Date.now();
@@ -290,6 +313,7 @@ function handleNotificationElicitation(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "waiting";
   session.current_action = "Waiting for input";
   session.last_update = Date.now();
@@ -301,6 +325,7 @@ function handlePreToolUse(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "busy";
   session.current_action = input.tool_name
     ? formatToolAction(input.tool_name, input.tool_input)
@@ -314,6 +339,7 @@ function handlePostToolUse(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "busy";
   session.current_action = null;
   session.last_update = Date.now();
@@ -325,6 +351,7 @@ function handlePostToolUseFailure(input: HookInput): void {
   if (!session) return;
 
   session.tmux_target = getTmuxTarget() ?? session.tmux_target;
+  session.window_name = getWindowName() ?? session.window_name;
   session.state = "busy";
   session.current_action = null;
   session.last_update = Date.now();

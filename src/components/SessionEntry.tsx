@@ -102,7 +102,17 @@ function ClaudeEntry({
   const stateColor = getStateColor(session.state);
   const shouldBlink = session.state === "busy";
 
-  const tmuxTarget = session.tmux_target || "—";
+  // Format tmux target, showing window name instead of index when available
+  const tmuxTarget = (() => {
+    if (!session.tmux_target) return "—";
+    if (!session.window_name) return session.tmux_target;
+    // Replace window index with window name: "session:idx.pane" -> "session:name.pane"
+    const match = session.tmux_target.match(/^([^:]+):(\d+)\.(\d+)$/);
+    if (match) {
+      return `${match[1]}:${session.window_name}.${match[3]}`;
+    }
+    return session.tmux_target;
+  })();
 
   // Fixed widths for prefix and suffix columns
   const prefixWidth = 4; // selector + bullet + space

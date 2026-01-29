@@ -36,6 +36,7 @@ export interface Session {
   pid: number;
   cwd: string;
   tmux_target: string | null;
+  window_name: string | null;
   state: SessionState;
   current_action: string | null;
   prompt_text: string | null;
@@ -47,6 +48,7 @@ export interface SessionInput {
   pid: number;
   cwd: string;
   tmux_target?: string | null;
+  window_name?: string | null;
   state?: SessionState;
   current_action?: string | null;
   prompt_text?: string | null;
@@ -57,6 +59,7 @@ export interface SessionUpdate {
   current_action?: string | null;
   prompt_text?: string | null;
   tmux_target?: string | null;
+  window_name?: string | null;
 }
 
 /**
@@ -112,6 +115,7 @@ export function upsertSession(input: SessionInput): void {
     pid: input.pid,
     cwd: input.cwd,
     tmux_target: input.tmux_target ?? existing?.tmux_target ?? null,
+    window_name: input.window_name ?? existing?.window_name ?? null,
     state: input.state ?? existing?.state ?? "busy",
     current_action: input.current_action ?? existing?.current_action ?? null,
     prompt_text: input.prompt_text ?? existing?.prompt_text ?? null,
@@ -139,6 +143,9 @@ export function updateSession(id: string, update: SessionUpdate): void {
   }
   if (update.tmux_target !== undefined) {
     session.tmux_target = update.tmux_target;
+  }
+  if (update.window_name !== undefined) {
+    session.window_name = update.window_name;
   }
   session.last_update = Date.now();
 

@@ -137,9 +137,9 @@ export function App() {
         setRefreshIndex((i) => i + 1);
 
         // Find correct pane for this session's PID
-        const correctTarget = findPaneForPid(session.pid);
-        if (correctTarget && correctTarget !== session.tmux_target) {
-          updateSession(session.id, { tmux_target: correctTarget });
+        const paneInfo = findPaneForPid(session.pid);
+        if (paneInfo && (paneInfo.target !== session.tmux_target || paneInfo.windowName !== session.window_name)) {
+          updateSession(session.id, { tmux_target: paneInfo.target, window_name: paneInfo.windowName });
         }
       } catch {
         // Ignore errors during target refresh
