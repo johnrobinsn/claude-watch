@@ -38,24 +38,7 @@ npm run build
 npm link  # Makes 'claude-watch' available globally
 ```
 
-## Setup
-
-Run the interactive setup wizard:
-
-```bash
-claude-watch --setup
-```
-
-This will:
-
-1. **Create the data directory** at `~/.claude-watch/`
-2. **Install Claude Code hooks** in `~/.claude/settings.json`
-
-The tmux keybinding (`prefix + w`) is added automatically when claude-watch starts.
-
 ## Usage
-
-### Starting the dashboard
 
 From any tmux session, simply run:
 
@@ -63,12 +46,14 @@ From any tmux session, simply run:
 claude-watch
 ```
 
-This will automatically:
-1. Create a `watch` session if it doesn't exist
+On first run, claude-watch will prompt to install hooks in `~/.claude/settings.json`. After that, it will:
+
+1. Create a `watch` tmux session if it doesn't exist
 2. Switch you to the `watch` session
 3. Start the dashboard
+4. Add a `prefix + w` keybinding to quickly return to the dashboard
 
-If you run claude-watch outside of tmux, it will print an error and exit.
+**Note:** Requires tmux. If you run claude-watch outside of tmux, it will print an error and exit.
 
 ### Keyboard shortcuts
 
@@ -238,7 +223,7 @@ claude-watch/
 
 ```bash
 npm update -g @johnrobinsn/claude-watch
-claude-watch --setup  # Reinstall hooks with updated paths
+claude-watch  # Will prompt to update hooks if needed
 ```
 
 ### From source
@@ -248,7 +233,7 @@ cd claude-watch
 git pull
 npm install
 npm run build
-claude-watch --setup  # Reinstall hooks with updated paths
+claude-watch  # Will prompt to update hooks if needed
 ```
 
 ## Uninstall
@@ -278,7 +263,7 @@ rm -rf ~/.claude-watch
 
 ### Sessions not appearing
 
-1. Ensure you ran `claude-watch --setup` to install hooks
+1. Run `claude-watch` and accept the prompt to install hooks (if shown)
 2. Restart any running Claude Code sessions (hooks are loaded at startup)
 3. Check that `~/.claude/settings.json` contains the claude-watch hooks
 
