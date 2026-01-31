@@ -1,5 +1,17 @@
 #!/usr/bin/env node
 
+// Check Node version before any imports that might fail on older versions
+const MIN_NODE_VERSION = 18;
+const currentVersion = parseInt(process.versions.node.split(".")[0], 10);
+if (currentVersion < MIN_NODE_VERSION) {
+  console.error(
+    `Error: claude-watch requires Node.js ${MIN_NODE_VERSION} or higher.`
+  );
+  console.error(`You are running Node.js ${process.versions.node}.`);
+  console.error("Please upgrade Node.js and try again.");
+  process.exit(1);
+}
+
 import { program } from "commander";
 import { render } from "ink";
 import React from "react";

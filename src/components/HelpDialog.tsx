@@ -14,7 +14,7 @@ const KEYS = [
 ];
 
 export function HelpDialog({ width }: HelpDialogProps) {
-  const boxWidth = Math.min(width || 40, 40);
+  const boxWidth = Math.min(width || 50, 50);
 
   return (
     <Box flexDirection="column" alignItems="center" justifyContent="center" width={width}>
@@ -36,6 +36,9 @@ export function HelpDialog({ width }: HelpDialogProps) {
             <Text dimColor>{desc}</Text>
           </Box>
         ))}
+        <Box justifyContent="center" marginTop={1}>
+          <Text dimColor>github.com/johnrobinsn/claude-watch</Text>
+        </Box>
         <Box justifyContent="center" marginTop={1}>
           <Text dimColor>Press any key to close</Text>
         </Box>
