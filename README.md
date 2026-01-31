@@ -49,10 +49,9 @@ claude-watch --setup
 This will:
 
 1. **Create the data directory** at `~/.claude-watch/`
-2. **Initialize the SQLite database** for session state
-3. **Install Claude Code hooks** in `~/.claude/settings.json`
+2. **Install Claude Code hooks** in `~/.claude/settings.json`
 
-The tmux keybinding (`prefix + W`) is added automatically when claude-watch starts.
+The tmux keybinding (`prefix + w`) is added automatically when claude-watch starts.
 
 ## Usage
 
@@ -78,11 +77,12 @@ If you run claude-watch outside of tmux, it will print an error and exit.
 | `j` / `↓` | Move selection down |
 | `k` / `↑` | Move selection up |
 | `Enter` | Jump to selected session |
+| `h` | Toggle help dialog |
 | `q` | Quit dashboard |
 
 ### Quick access
 
-From any tmux session, press `prefix + W` to jump to the dashboard.
+From any tmux session, press `prefix + w` to jump to the dashboard.
 
 ## How It Works
 
@@ -90,8 +90,8 @@ From any tmux session, press `prefix + W` to jump to the dashboard.
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Claude Code    │────▶│  Hook Scripts    │────▶│  SQLite DB      │
-│  (running)      │     │  (on events)     │     │  (state.db)     │
+│  Claude Code    │────▶│  Hook Scripts    │────▶│  JSON Files     │
+│  (running)      │     │  (on events)     │     │  (sessions/)    │
 └─────────────────┘     └──────────────────┘     └────────┬────────┘
                                                           │
 ┌─────────────────┐     ┌──────────────────┐              │
@@ -132,20 +132,21 @@ This bidirectional sync ensures the dashboard accurately reflects the true state
 
 ### Data Storage
 
-Session state is stored in SQLite at `~/.claude-watch/state.db` using WAL mode for concurrent access between hook scripts and the TUI.
+Session state is stored as individual JSON files in `~/.claude-watch/sessions/`, one file per session. This approach eliminates native compilation requirements and allows atomic updates via temp file + rename.
 
-```sql
-CREATE TABLE sessions (
-  id TEXT PRIMARY KEY,           -- Claude session ID
-  pid INTEGER,                   -- Claude process ID
-  cwd TEXT,                      -- Working directory
-  tmux_target TEXT,              -- tmux pane (e.g., "main:1.0")
-  state TEXT,                    -- busy, idle, waiting, permission
-  current_action TEXT,           -- Current tool or action
-  prompt_text TEXT,              -- Question text (for elicitations)
-  last_update INTEGER,           -- Timestamp
-  metadata TEXT                  -- JSON metadata
-);
+```json
+{
+  "v": 1,
+  "id": "session-uuid",
+  "pid": 12345,
+  "cwd": "/path/to/project",
+  "tmux_target": "main:1.0",
+  "window_name": "vim",
+  "state": "busy",
+  "current_action": "Running: Bash",
+  "prompt_text": null,
+  "last_update": 1706745600000
+}
 ```
 
 ## Development
@@ -208,25 +209,26 @@ claude-watch/
 │   ├── app.tsx             # Main React/Ink app
 │   ├── components/         # UI components
 │   │   ├── Header.tsx
+│   │   ├── HelpDialog.tsx
 │   │   ├── SessionEntry.tsx
 │   │   ├── SessionList.tsx
 │   │   └── StatusBar.tsx
-│   ├── db/                 # Database layer
-│   │   ├── schema.ts
-│   │   ├── sessions.ts
+│   ├── db/                 # Session storage (JSON files)
+│   │   ├── sessions-json.ts
 │   │   └── index.ts
 │   ├── hooks/              # Claude Code hook handler
 │   │   └── claude-watch-hook.ts
 │   ├── setup/              # Setup wizard
 │   │   ├── hooks.ts
-│   │   └── wizard.ts
+│   │   └── index.ts
 │   ├── tmux/               # tmux integration
 │   │   ├── detect.ts
 │   │   ├── navigate.ts
 │   │   └── pane.ts
 │   └── utils/
 │       ├── paths.ts
-│       └── pid.ts
+│       ├── pid.ts
+│       └── version.ts
 └── tests/                  # Test files (mirrors src/)
 ```
 
@@ -283,7 +285,7 @@ rm -rf ~/.claude-watch
 ### Status not updating
 
 1. Check that hooks are installed: `cat ~/.claude/settings.json | grep claude-watch`
-2. Ensure SQLite database exists: `ls ~/.claude-watch/state.db`
+2. Ensure sessions directory exists: `ls ~/.claude-watch/sessions/`
 3. Restart Claude Code sessions to pick up new hooks
 
 ### "No sessions" when Claude is running
@@ -292,7 +294,7 @@ The Claude session may have started before hooks were installed. Restart Claude 
 
 ### tmux binding not working
 
-The `prefix + W` binding is added dynamically when claude-watch starts. If it's not working:
+The `prefix + w` binding is added dynamically when claude-watch starts. If it's not working:
 
 1. Ensure claude-watch has been started at least once in this tmux server
 2. Check binding exists: `tmux list-keys | grep "switch-client -t watch"`

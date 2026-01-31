@@ -12,46 +12,45 @@ claude-watch monitors all running Claude Code sessions via hooks and displays th
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Claude Code    │────▶│  SQLite Database │◀────│  claude-watch   │
+│  Claude Code    │────▶│  JSON Files      │◀────│  claude-watch   │
 │  (with hooks)   │     │  ~/.claude-watch │     │  (Ink TUI)      │
-└─────────────────┘     │  /state.db       │     └─────────────────┘
+└─────────────────┘     │  /sessions/      │     └─────────────────┘
                         └──────────────────┘
 ```
 
 ### IPC Mechanism
 
-**SQLite database** at `~/.claude-watch/state.db`
+**Per-session JSON files** at `~/.claude-watch/sessions/{session_id}.json`
 
 Rationale:
 - Hooks can write even when claude-watch isn't running
-- WAL mode handles concurrent writes from multiple sessions
-- Easy debugging via `sqlite3` CLI
+- Atomic writes via temp file + rename prevent corruption
+- No native compilation required (unlike SQLite bindings)
+- Easy debugging via `cat` or any JSON tool
 - Simple recovery on claude-watch restart
 - Straightforward test fixtures
 
-Schema:
-```sql
-CREATE TABLE sessions (
-    id TEXT PRIMARY KEY,           -- Claude session ID
-    pid INTEGER NOT NULL,          -- Process ID for liveness checks
-    cwd TEXT NOT NULL,             -- Working directory
-    tmux_target TEXT,              -- session:window.pane or NULL if not in tmux
-    state TEXT NOT NULL,           -- 'busy', 'idle', 'waiting', 'permission'
-    current_action TEXT,           -- e.g., "Running: Bash", "Editing: src/foo.ts"
-    prompt_text TEXT,              -- User prompt when waiting for input
-    last_update INTEGER NOT NULL,  -- Unix timestamp
-    metadata TEXT                  -- JSON for extensibility
-);
-
-CREATE INDEX idx_sessions_state ON sessions(state);
-CREATE INDEX idx_sessions_last_update ON sessions(last_update);
+Schema (JSON):
+```json
+{
+  "v": 1,
+  "id": "session-uuid",
+  "pid": 12345,
+  "cwd": "/path/to/project",
+  "tmux_target": "main:1.0",
+  "window_name": "vim",
+  "state": "busy",
+  "current_action": "Running: Bash",
+  "prompt_text": null,
+  "last_update": 1706745600000
+}
 ```
 
 ### Data Location
 
 All data stored in `~/.claude-watch/`:
-- `state.db` - Session state database
-- `config.json` - User configuration (optional)
+- `sessions/` - Per-session JSON files
+- `claude-watch.lock` - Lock file to prevent duplicate instances
 
 ## Hooks Integration
 
@@ -164,16 +163,16 @@ Supports both keyboard and mouse:
 
 ### Dedicated Session
 
-claude-watch is designed to run in its own tmux session (e.g., named `watch`). This allows the `prefix + w` binding to reliably return to the dashboard.
+claude-watch is designed to run in its own tmux session (named `watch`). This allows the `prefix + w` binding to reliably return to the dashboard.
 
 ### Keybinding
 
 Default binding: `prefix + w`
 
-This overrides the default window chooser but provides quick access to the dashboard. Added to `~/.tmux.conf`:
+This overrides the default tmux `choose-tree` binding but provides quick access to the dashboard. The binding is added dynamically when claude-watch starts:
 
 ```tmux
-bind w switch-client -t watch
+bind-key w switch-client -t "watch:1.1"
 ```
 
 ### Cross-Session Navigation
@@ -206,11 +205,9 @@ claude-watch --setup
 
 This command:
 1. Creates `~/.claude-watch/` directory
-2. Initializes SQLite database
+2. Creates `~/.claude-watch/sessions/` directory for session files
 3. **Shows diff** of proposed changes to `~/.claude/settings.json`
 4. **Prompts for confirmation** before modifying hooks
-5. Shows proposed tmux.conf additions
-6. Prompts before modifying tmux configuration
 
 ### Hook Installation
 
@@ -235,7 +232,7 @@ Removes hooks from Claude Code settings. Optionally clean up data directory manu
 
 On `SessionStart`:
 1. Hook captures PID, cwd, tmux target (if available)
-2. Inserts/updates row in SQLite
+2. Creates/updates session JSON file in `~/.claude-watch/sessions/`
 3. Sets initial state to `busy`
 
 ### State Updates
@@ -246,9 +243,9 @@ Hooks update session state in real-time as Claude works.
 
 **PID Polling**: claude-watch periodically (every 5s) checks if session PIDs are still alive. Dead sessions are automatically removed.
 
-**On Startup**: claude-watch checks all existing sessions for liveness and removes stale entries silently.
+**On Startup**: claude-watch checks all existing sessions for liveness and removes stale JSON files silently.
 
-**SessionEnd Hook**: Removes session from database when Claude exits normally.
+**SessionEnd Hook**: Removes session JSON file when Claude exits normally.
 
 ## Testing Strategy
 
@@ -259,10 +256,10 @@ Hooks update session state in real-time as Claude works.
 - Assert on rendered output
 - Test keyboard/mouse event handling
 
-**Database Layer**: Test SQLite operations with in-memory database:
+**Storage Layer**: Test JSON file operations with temp directory:
 - Session CRUD operations
-- Concurrent write handling
-- Query correctness
+- Atomic write handling
+- File cleanup
 
 **Hook Scripts**: Test hook logic with mock inputs:
 - tmux detection
@@ -271,12 +268,12 @@ Hooks update session state in real-time as Claude works.
 
 ### Integration Tests
 
-**End-to-End**: Mock Claude hooks by writing directly to SQLite:
+**End-to-End**: Mock Claude hooks by writing JSON files directly:
 - Simulate session lifecycle events
 - Verify TUI reflects state changes
 - Test navigation commands
 
-No real Claude sessions needed in CI - hooks are simulated via direct database writes.
+No real Claude sessions needed in CI - hooks are simulated via direct JSON file writes.
 
 ### Coverage
 
@@ -323,10 +320,10 @@ claude-watch --help
 
 ## Error Handling
 
-- **Database locked**: Retry with exponential backoff
+- **File write failures**: Atomic writes via temp + rename prevent corruption
 - **tmux not available**: Show sessions but disable navigation
 - **Hook write failures**: Log to stderr, don't crash
-- **Invalid session data**: Skip malformed entries, log warning
+- **Invalid session data**: Skip malformed JSON files, log warning
 
 ## Future Considerations
 
@@ -349,8 +346,8 @@ Works on any platform where Node.js and tmux are available:
 ### Runtime
 - Node.js ≥18
 - Ink (TUI framework)
-- better-sqlite3 (SQLite bindings)
-- tmux (optional, for navigation features)
+- Commander (CLI parsing)
+- tmux (required for full functionality)
 
 ### Development
 - TypeScript
@@ -367,34 +364,32 @@ claude-watch/
 │   ├── cli.ts              # Entry point, argument parsing
 │   ├── app.tsx             # Main Ink application
 │   ├── components/         # Ink components
-│   │   ├── SessionList.tsx
+│   │   ├── Header.tsx
+│   │   ├── HelpDialog.tsx
 │   │   ├── SessionEntry.tsx
-│   │   ├── StatusBar.tsx
-│   │   └── Header.tsx
+│   │   ├── SessionList.tsx
+│   │   └── StatusBar.tsx
 │   ├── db/
-│   │   ├── schema.ts       # Database schema
-│   │   ├── sessions.ts     # Session CRUD operations
+│   │   ├── sessions-json.ts # Session CRUD (JSON files)
 │   │   └── index.ts
-│   ├── hooks/              # Hook scripts (shell + Node)
-│   │   ├── session-start.sh
-│   │   ├── stop.sh
-│   │   ├── pre-tool-use.sh
-│   │   └── ...
+│   ├── hooks/              # Claude Code hook handler
+│   │   └── claude-watch-hook.ts
 │   ├── tmux/
 │   │   ├── detect.ts       # tmux environment detection
-│   │   └── navigate.ts     # Session navigation
+│   │   ├── navigate.ts     # Session navigation
+│   │   └── pane.ts         # Pane content capture
 │   ├── setup/
-│   │   ├── wizard.ts       # Interactive setup
 │   │   ├── hooks.ts        # Hook installation
-│   │   └── tmux.ts         # tmux configuration
+│   │   └── index.ts        # Setup wizard
 │   └── utils/
+│       ├── paths.ts        # Path utilities
 │       ├── pid.ts          # PID liveness checking
-│       └── paths.ts        # Path utilities
+│       └── version.ts      # Version constant
 ├── tests/
 │   ├── components/
 │   ├── db/
-│   ├── hooks/
-│   └── integration/
+│   ├── setup/
+│   └── tmux/
 ├── package.json
 ├── tsconfig.json
 └── README.md
