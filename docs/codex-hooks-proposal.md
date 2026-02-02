@@ -87,6 +87,13 @@ pub(crate) enum UserNotification {
         turn_id: String,
         approved: bool,
     },
+
+    // NEW: User cancelled/interrupted agent while working
+    #[serde(rename_all = "kebab-case")]
+    TurnCancelled {
+        thread_id: String,
+        turn_id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -154,6 +161,15 @@ pub enum ApprovalType {
 }
 ```
 
+**turn-cancelled:** (user pressed Escape to interrupt)
+```json
+{
+  "type": "turn-cancelled",
+  "thread-id": "b5f6c1c2-1111-2222-3333-444455556666",
+  "turn-id": "1"
+}
+```
+
 **session-end:**
 ```json
 {
@@ -171,6 +187,7 @@ pub enum ApprovalType {
 | `approval-requested` | state = `permission` |
 | `approval-response` (approved) | state = `busy` |
 | `approval-response` (denied) | state = `idle` |
+| `turn-cancelled` | state = `idle` |
 | `agent-turn-complete` | state = `idle` |
 | `session-end` | Delete session entry |
 
