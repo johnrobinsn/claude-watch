@@ -22,6 +22,7 @@ import {
   writeFileSync,
   renameSync,
   unlinkSync,
+  readdirSync,
 } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -99,6 +100,38 @@ function deleteSessionFile(id: string): void {
     }
   } catch {
     // Ignore
+  }
+}
+
+/**
+ * Delete all sessions with a given PID (except the one we're about to create).
+ * This prevents duplicates when Claude restarts in the same terminal.
+ */
+function deleteSessionsByPid(pid: number, exceptId?: string): void {
+  if (pid <= 0) return;
+
+  try {
+    const files = readdirSync(SESSIONS_DIR);
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+
+      const sessionId = file.replace(".json", "");
+      if (exceptId && sessionId === exceptId) continue;
+
+      const path = join(SESSIONS_DIR, file);
+      try {
+        const data = readFileSync(path, "utf-8");
+        const session = JSON.parse(data) as Session;
+        if (session.pid === pid) {
+          debugLog(`deleteSessionsByPid: removing duplicate session ${sessionId} with pid=${pid}`);
+          unlinkSync(path);
+        }
+      } catch {
+        // Skip corrupt files
+      }
+    }
+  } catch {
+    // Ignore errors
   }
 }
 
@@ -233,10 +266,15 @@ async function readStdin(): Promise<HookInput> {
 }
 
 function handleSessionStart(input: HookInput): void {
+  const pid = getClaudePid();
+
+  // Remove any existing sessions with the same PID to prevent duplicates
+  deleteSessionsByPid(pid, input.session_id);
+
   const session: Session = {
     v: SCHEMA_VERSION,
     id: input.session_id,
-    pid: getClaudePid(),
+    pid,
     cwd: input.cwd,
     tmux_target: getTmuxTarget(),
     window_name: getWindowName(),
