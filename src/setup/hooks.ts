@@ -24,6 +24,7 @@ interface HooksConfig {
 interface ClaudeWatchMetadata {
   version: string;
   installedAt: string;
+  hookPath?: string;
 }
 
 interface ClaudeSettings {
@@ -32,7 +33,7 @@ interface ClaudeSettings {
   [key: string]: unknown;
 }
 
-function getHookScriptPath(scriptName: string): string {
+export function getHookScriptPath(scriptName: string): string {
   // In production, scripts are in dist/hooks/
   // During development, they might be in src/hooks/
   const distPath = join(__dirname, "..", "hooks", scriptName);
@@ -204,6 +205,13 @@ export function checkHooksStatus(): "install" | "update" | "current" {
     return "update";
   }
 
+  // Check if hook path has changed (e.g., switched from global to local dev)
+  const installedPath = settings["claude-watch"]?.hookPath;
+  const currentPath = getHookScriptPath("claude-watch-hook.js");
+  if (installedPath && installedPath !== currentPath) {
+    return "update";
+  }
+
   return "current";
 }
 
@@ -299,6 +307,7 @@ export function installHooks(): { diff: string; newSettings: ClaudeSettings } {
     "claude-watch": {
       version: VERSION,
       installedAt: new Date().toISOString(),
+      hookPath: getHookScriptPath("claude-watch-hook.js"),
     },
   };
 
